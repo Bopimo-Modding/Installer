@@ -4,6 +4,7 @@ import configparser
 import argparse
 import platform
 import requests
+import hashlib
 import zipfile
 import shutil
 import sys
@@ -41,6 +42,7 @@ parser.add_argument('--quick-exit', action='store_true')
 run_args = parser.parse_args()
 
 INSTALLER_VERSION = "1.0.0"
+LATEST_RELEASE_CHECKSUM = "edf957097e576a06760dd933c8c6395445b56236f7f2360b089858ff33417da7"
 OS = platform.system()
 
 # Paths
@@ -56,7 +58,10 @@ def fetch_latest_release(release_type="file"):
         if release_type == "file":
             rzip = requests.get(response.json()["file"])
             if rzip.status_code == 200:
-                return zipfile.ZipFile(BytesIO(rzip.content), "r")
+                file_content = rzip.content
+                if hashlib.sha256(file_content).hexdigest() != LATEST_RELEASE_CHECKSUM:
+                    sys.exit(ExitResult.DOWNLOAD_FAILED.value)
+                return zipfile.ZipFile(BytesIO(file_content), "r")
             sys.exit(ExitResult.DOWNLOAD_FAILED.value)
         return response.json()["version"]
     sys.exit(ExitResult.FETCH_LATEST_FAILED.value)
